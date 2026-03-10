@@ -4,6 +4,8 @@ a module is imported only if needed, reducing the number of raised errors and
 warnings due to unused modules.
 """
 
+from importlib.metadata import version, PackageNotFoundError
+
 from pathlib import Path
 from types import ModuleType
 import torch
@@ -17,7 +19,11 @@ THIRD_PARTY_DIR = Path(__file__).parent.joinpath("third_party")  # exported for 
 disable_progress_bars()  # disable all HF progress bars
 
 
-__version__ = "1.2.0"
+try:
+    __version__ = version("vismatch")
+except PackageNotFoundError:
+    # package is not installed
+    pass
 
 available_models = [
     "liftfeat",
