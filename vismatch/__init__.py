@@ -17,7 +17,7 @@ THIRD_PARTY_DIR = Path(__file__).parent.joinpath("third_party")  # exported for 
 disable_progress_bars()  # disable all HF progress bars
 
 
-__version__ = "1.1.3"
+__version__ = "1.2.0"
 
 available_models = [
     "liftfeat",
