@@ -42,4 +42,4 @@ result = matcher(img0, img1)
 ## Available Models
 
 See {py:data}`vismatch.available_models` for the full list, or refer to the
-[model details page](https://github.com/gmberton/vismatch/blob/main/docs/model_details.md).
+[model details page](../source/model_details.md).
