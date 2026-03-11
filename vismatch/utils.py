@@ -191,7 +191,7 @@ def resize_to_divisible(img: torch.Tensor, divisible_by: int = 14) -> torch.Tens
     """Resize to be divisible by a factor. Useful for ViT based models.
 
     Args:
-        img (torch.Tensor): img as tensor, in (*, H, W) order
+        img (torch.Tensor): img as tensor, in (\*, H, W) order
         divisible_by (int, optional): factor to make sure img is divisible by. Defaults to 14.
 
     Returns:

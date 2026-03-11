@@ -1,0 +1,5 @@
+a.reference.external[href*="github.com"] {
+  color: #2b7a0b;
+  font-size: 0.85em;
+  margin-left: 0.5em;
+}

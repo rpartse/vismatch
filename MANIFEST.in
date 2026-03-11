@@ -7,6 +7,8 @@ recursive-include vismatch/third_party *.py
 recursive-include vismatch/third_party/imatch-toolbox *.yml *.yaml
 recursive-include vismatch/third_party/rdd *.yml *.yaml
 
+include vismatch/_version.py
+
 global-exclude .DS_Store *.pyc *.pyo __pycache__ *.so *.dylib
 
 # if we wanted to exclude / include *.yml across the third party pacakges
