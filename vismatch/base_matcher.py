@@ -1,18 +1,43 @@
+from typing import Dict
+
 import cv2
 import torch
 import numpy as np
 from PIL import Image
 from pathlib import Path
+from dataclasses import dataclass
 
 from vismatch.utils import to_normalized_coords, to_px_coords, to_numpy, _load_image, to_tensor_image
+
+
+# Union of all accepted matcher inputs: a raw image in any supported form, or
+# a pre-extracted feature set (Dict).
+MatchInput = torch.Tensor | np.ndarray | str | Path | Image.Image | Dict
 
 
 class BaseMatcher(torch.nn.Module):
     """
     This serves as a base class for all matchers. It provides a simple interface
     for its sub-classes to implement, namely each matcher must specify its own
-    __init__ and _forward methods. It also provides a common image_loader and
-    homography estimator
+    ``__init__`` and ``_forward`` methods. It also provides a common image loader
+    and homography estimator.
+
+    Sub-classes must implement at least one of:
+
+    * ``_forward(img0, img1) -> (mkpts0, mkpts1, kpts0, kpts1, desc0, desc1)``:
+      the traditional image-pair path (required when callers supply raw images).
+        * ``extract_features(img) -> (kpts, desc)`` **and**
+            ``match_features(kpts0, desc0, kpts1, desc1) -> (mkpts0, mkpts1)``:
+      the decoupled extraction/matching path that enables ``(image, features)``
+      and ``(features, features)`` inputs.
+
+    The :meth:`forward` method accepts any mix of images and feature set (Dict)
+    objects and automatically dispatches to the appropriate path:
+
+    * ``(image, image)``       — calls ``_forward`` (original behaviour).
+        * ``(image, features)``    — extracts one side via ``extract_features``, then matches
+            via ``match_features``.
+        * ``(features, features)`` — calls ``match_features`` directly.
     """
 
     def __init__(self, device: str = "cpu", **kwargs):
@@ -97,17 +122,80 @@ class BaseMatcher(torch.nn.Module):
 
         return H, inlier_kpts0, inlier_kpts1
 
+    def extract_features(self, img: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """Extract keypoints and descriptors from a single image tensor.
+
+        The default implementation calls ``_forward(img, img)`` and returns the
+        ``all_kpts`` / ``all_desc`` outputs for that image.  Sub-classes that
+        own a dedicated feature extractor (e.g. SuperPoint, SIFT) should
+        override this method for efficiency so the network is not run twice.
+
+        Args:
+            img (torch.Tensor): image tensor ``(3, H, W)`` in ``[0, 1]`` range,
+                already on the correct device.
+
+        Returns:
+            dict: result dict with keys:
+                - all_kpts0 (torch.Tensor): (N, 2) detected keypoints
+                - all_desc0 (torch.Tensor): (N, D) descriptors
+        """
+        _, _, all_kpts, _, all_desc, _ = self._forward(img, img)
+        kpts = to_numpy(all_kpts) if all_kpts is not None else np.empty([0, 2])
+        desc = to_numpy(all_desc) if all_desc is not None else np.empty([0, 0])
+        return {"all_kpts0": kpts, "all_desc0": desc}
+
+    def match_features(
+        self,
+        fset0: Dict[str, torch.Tensor],
+        fset1: Dict[str, torch.Tensor],
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Match pre-extracted features from two images.
+
+        Sub-classes that support ``(image, features)`` or
+        ``(features, features)`` inputs must override this method.
+        The default implementation raises :class:`NotImplementedError`.
+
+        Args:
+            fset0 (Dict[str, torch.Tensor]): Feature set from the first image, must contain keys 'all_kpts0' and 'all_desc0'.
+            fset1 (Dict[str, torch.Tensor]): Feature set from the second image, must contain keys 'all_kpts0' and 'all_desc0'.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: Matched keypoints from both images as ``(M, 2)`` arrays.
+
+        Raises:
+            NotImplementedError: If the method is not overridden in a subclass.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support feature-input matching. "
+            "Override match_features() to enable (image, features) or "
+            "(features, features) inputs."
+        )
+
     @torch.inference_mode()
     def forward(
         self,
-        img0: torch.Tensor | np.ndarray | str | Path | Image.Image,
-        img1: torch.Tensor | np.ndarray | str | Path | Image.Image,
+        input0: MatchInput,
+        input1: MatchInput,
     ) -> dict:
-        """Run matching pipeline on two images. All sub-classes implement this interface.
+        """Run the matching pipeline on two inputs.
+
+        Each input may be a raw image (``torch.Tensor``, ``np.ndarray``,
+        file path ``str``/``Path``, or ``PIL.Image``) *or* a pre-extracted
+        feature set ``Dict``.  Three usage patterns are supported:
+
+        * ``(image, image)``       — full pipeline via ``_forward``.
+                * ``(image, features)``    — extract one side, match via
+                    ``match_features``.
+                * ``(features, features)`` — match directly via
+                    ``match_features``.
+
+        Matchers that do not decouple extraction from matching (e.g. LoFTR)
+        only support the ``(image, image)`` mode.
 
         Args:
-            img0 (torch.Tensor | np.ndarray | str | Path | Image.Image): image as (3, H, W) array in [0, 1] range, path, or PIL Image
-            img1 (torch.Tensor | np.ndarray | str | Path | Image.Image): image as (3, H, W) array in [0, 1] range, path, or PIL Image
+            input0 (MatchInput): first image or feature set ``Dict``.
+            input1 (MatchInput): second image or feature set ``Dict``.
 
         Returns:
             dict: result dict with keys:
@@ -123,12 +211,37 @@ class BaseMatcher(torch.nn.Module):
                 - inlier_kpts1 (np.ndarray): (N3 x 2) filtered matched_kpts1 that fit the H model (post-RANSAC)
         """
 
-        # Take as input a pair of images (not a batch)
-        img0 = to_tensor_image(img0).to(self.device)
-        img1 = to_tensor_image(img1).to(self.device)
+        is_features0 = isinstance(input0, dict)
+        is_features1 = isinstance(input1, dict)
 
-        # self._forward() is implemented by the children modules
-        matched_kpts0, matched_kpts1, all_kpts0, all_kpts1, all_desc0, all_desc1 = self._forward(img0, img1)
+        if not is_features0 and not is_features1:
+            # (image, image) — original code path through _forward
+            img0 = to_tensor_image(input0).to(self.device)
+            img1 = to_tensor_image(input1).to(self.device)
+
+            # self._forward() is implemented by the children modules
+            matched_kpts0, matched_kpts1, all_kpts0, all_kpts1, all_desc0, all_desc1 = self._forward(img0, img1)
+        else:
+            # (image, features) or (features, features) — use extract_features + match_features
+            if is_features0:
+                all_kpts0 = input0["all_kpts0"]
+                all_desc0 = input0["all_desc0"]
+                fset0 = {"all_kpts0": all_kpts0, "all_desc0": all_desc0}
+            else:
+                img0 = to_tensor_image(input0).to(self.device)
+                fset0 = self.extract_features(img0)
+                all_kpts0, all_desc0 = fset0["all_kpts0"], fset0["all_desc0"]
+
+            if is_features1:
+                all_kpts1 = input1["all_kpts0"]
+                all_desc1 = input1["all_desc0"]
+                fset1 = {"all_kpts0": all_kpts1, "all_desc0": all_desc1}
+            else:
+                img1 = to_tensor_image(input1).to(self.device)
+                fset1 = self.extract_features(img1)
+                all_kpts1, all_desc1 = fset1["all_kpts0"], fset1["all_desc0"]
+
+            matched_kpts0, matched_kpts1 = self.match_features(fset0, fset1)
 
         # Check that returned objects are of accepted types (nd.array, torch.tensor or None)
         self.check_types(matched_kpts0, matched_kpts1, all_kpts0, all_kpts1, all_desc0, all_desc1)
@@ -169,8 +282,14 @@ class BaseMatcher(torch.nn.Module):
     def extract(self, img: torch.Tensor | np.ndarray | str | Path | Image.Image) -> dict[str, np.ndarray]:
         """Extract keypoints and descriptors from a single image.
 
+        Convenience wrapper around :meth:`forward`.  To extract features and
+        keep them for later use as :class:`FeatureSet` inputs, prefer calling
+        :meth:`extract_features` directly after moving the image tensor to the device.
+
         Args:
-            img (torch.Tensor | np.ndarray | str | Path | Image.Image): image as (3, H, W) array in [0, 1] range, path, or PIL Image
+            img (torch.Tensor | np.ndarray | str | Path | Image.Image): image
+                as ``(3, H, W)`` array in ``[0, 1]`` range, a file path, or a
+                PIL Image.
 
         Returns:
             dict: result dict with keys:

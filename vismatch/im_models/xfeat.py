@@ -1,5 +1,8 @@
+from typing import Dict
+import numpy as np
 from torch import Tensor
 from huggingface_hub import snapshot_download
+import torch
 
 from vismatch import BaseMatcher, THIRD_PARTY_DIR
 from vismatch.utils import add_to_path
@@ -37,6 +40,53 @@ class xFeatMatcher(BaseMatcher):
         while img.ndim < 4:
             img = img.unsqueeze(0)
         return self.model.parse_input(img)
+    
+    def extract_features(self, img: torch.Tensor) -> Dict[str, torch.Tensor]:
+        img = self.preprocess(img)
+
+        if self.mode == "semi-dense":
+            output = self.model.detectAndComputeDense(img, top_k=self.max_num_keypoints)
+            fset = {
+                "all_kpts0": output["keypoints"].squeeze(),
+                "all_desc0": output["descriptors"].squeeze(),
+            }
+        elif self.mode in ["sparse", "lighterglue"]:
+            output = self.model.detectAndCompute(img, top_k=self.max_num_keypoints)[0]
+            fset = {
+                "all_kpts0": output["keypoints"].squeeze(),
+                "all_desc0": output["descriptors"].squeeze(),
+            }
+            if self.mode == "lighterglue":
+                fset.update({"image_size": (img.shape[-1], img.shape[-2])})
+        else:
+            raise ValueError(f'unsupported mode for xfeat: {self.mode}. Must choose from ["sparse", "semi-dense"]')
+        
+        return fset
+    
+    def match_features(
+        self,
+        fset0: Dict[str, torch.Tensor],
+        fset1: Dict[str, torch.Tensor],
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Match pre-extracted features from two images."""
+
+        if self.mode == "semi-dense":
+            idxs_list = self.model.batch_match(fset0["all_desc0"], fset1["all_desc0"])
+            batch_size = len(idxs_list)
+            matches = []
+            for batch_idx in range(batch_size):
+                matches.append(self.model.refine_matches(fset0, fset1, matches=idxs_list, batch_idx=batch_idx))
+
+            mkpts0, mkpts1 = matches if batch_size > 1 else (matches[0][:, :2], matches[0][:, 2:])
+
+        elif self.mode in ["sparse", "lighterglue"]:
+            if self.mode == "lighterglue":
+                mkpts0, mkpts1 = self.model.match_lighterglue(fset0, fset1)
+            else:  # sparse
+                idxs0, idxs1 = self.model.match(fset0["all_desc0"], fset1["all_desc0"], min_cossim=-1)
+                mkpts0, mkpts1 = fset0["all_kpts0"][idxs0], fset1["all_kpts0"][idxs1]
+
+        return mkpts0, mkpts1
 
     def _forward(self, img0, img1):
         img0, img1 = self.preprocess(img0), self.preprocess(img1)
