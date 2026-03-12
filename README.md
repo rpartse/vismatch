@@ -20,9 +20,13 @@ Vis(ion)Match(ers) is a unified API for quickly and easily trying 50+ (and growi
 <a href="https://gmberton.github.io/vismatch-downloads-tracker/downloads_per_day.html">
   <img src="https://img.shields.io/endpoint?url=https://gmberton.github.io/vismatch-downloads-tracker/badge.json" alt="HF Downloads/month" style="vertical-align: middle;">
 </a>
+<a href="https://vismatch.readthedocs.io/en/latest/">
+  <img src="https://app.readthedocs.org/projects/vismatch/badge/?version=latest&style=flat" alt="ReadTheDocs Page" style="vertical-align: middle;">
+</a>
 
+<br/>
 
-Jump to: [Install](#install) | [Use](#use) | [Models](#available-models) | [Add a Model / Contributing](#adding-a-new-method) | [Acknowledgements](#acknowledgements) | [Cite](#cite) | [Download Stats](#download-stats)
+Jump to: [Install](#install) | [Use](#use) | [Models](#available-models) | [Add a Model / Contributing](#adding-a-new-method) | [Acknowledgements](#acknowledgements) | [Cite](#cite) | [Download Stats](#download-stats) | [Documentation](#documentation)
 
 ### Matching Examples
 Compare matching models across various scenes. For example, we show `SIFT-LightGlue` and `LoFTR` matches on pairs: 
@@ -179,6 +183,10 @@ See [Model Details](docs/source/model_details.md) to see runtimes, supported dev
 
 ## Adding a new method
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details. We follow the [1st principle of PyTorch](https://docs.pytorch.org/docs/stable/community/design.html#design-principles): Usability over Performance
+
+## Documentation 
+
+Please see docs at: https://vismatch.readthedocs.io/en/latest/ 
 
 ## Acknowledgements
 Special thanks to the authors of all models included in this repo (links in [Model Details](docs/source/model_details.md)), and to authors of other libraries we wrap like the [Image Matching Toolbox](https://github.com/GrumpyZhou/image-matching-toolbox/tree/main) and [Kornia](https://github.com/kornia/kornia).
