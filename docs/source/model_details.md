@@ -1,6 +1,7 @@
 ## Model Details
-> [!IMPORTANT]
-> Check the `LICENSE` of each model/original code base before use in your application. Some are heavily restricted.
+```{important}
+Check the `LICENSE` of each model/original code base before use in your application. Some are heavily restricted.
+```
 
 Most models can run on both CPU and GPU. If a runtime shows ❌, that model cannot run on that device. MPS (Apple Silicon) is not tested.
 
@@ -295,21 +296,22 @@ Most models can run on both CPU and GPU. If a runtime shows ❌, that model cann
 </table>
 <!--| SiLK (ICCV '23) | [Official](https://github.com/facebookresearch/silk) | [arxiv](https://arxiv.org/abs/2304.06194) | 0.694 | 3.733 | -->
 
+
+\
 Our implementation of Patch2Pix (+ Patch2PixSuperGlue), R2D2, and D2Net are based on the [Image Matching Toolbox](https://github.com/GrumpyZhou/image-matching-toolbox/tree/main) (IMT). LoFTR and DeDoDe-Lightglue are from [Kornia](https://github.com/kornia/kornia). Other models are based on the offical repos above.
 
 Runtime benchmark is the average of 5 iterations over the 5 pairs of examples in the `assets/example_pairs` folder at image size 512x512. Benchmark is done using `vismatch_test.py` on an NVIDIA RTX A4000 GPU. Results rounded to the hundredths place.
 
-\* `SphereGlue` requires `torch-geometric` and `torch-cluster`. Install with: `pip install .[all] -f https://data.pyg.org/whl/torch-2.5.0+cu124.html` (replace `cu124` with `cpu` for CPU). See [PyG installation docs](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html).
+* `SphereGlue` requires `torch-geometric` and `torch-cluster`. Install with: `pip install .[all] -f https://data.pyg.org/whl/torch-2.5.0+cu124.html` (replace `cu124` with `cpu` for CPU). See [PyG installation docs](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html).
 
-\* `SphereGlue` model runtimes are listed in the order: `SIFT, SuperPoint`
+* `SphereGlue` model runtimes are listed in the order: `SIFT, SuperPoint`
 
-\* `GIM` model runtimes are listed in the order: `LG, DKMv3`
+* `GIM` model runtimes are listed in the order: `LG, DKMv3`
 
-\* `LightGlue` model runtimes are listed in the order: `SIFT, SuperPoint, Disk, ALIKED`
+* `LightGlue` model runtimes are listed in the order: `SIFT, SuperPoint, Disk, ALIKED`
 
-\* `Keypt2Subpx` model runtimes are listed in the order: `superpoint-lightglue, aliked-lightglue, xfeat, dedode`
+* `Keypt2Subpx` model runtimes are listed in the order: `superpoint-lightglue, aliked-lightglue, xfeat, dedode`
 
-\* `MINIMA` model runtimes are listed in the order: `superpoint-lightglue, LoFTR, RoMa (large), RoMa (tiny)`
+* `MINIMA` model runtimes are listed in the order: `superpoint-lightglue, LoFTR, RoMa (large), RoMa (tiny)`
 
-\* `RDD` model runtimes are listed in the order: `sparse, star (semi-dense), lightglue, aliked`
-##
+* `RDD` model runtimes are listed in the order: `sparse, star (semi-dense), lightglue, aliked`

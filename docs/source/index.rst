@@ -19,6 +19,7 @@ Vis(ion)Match(ers) is a unified API for 50+ image matching models with a consist
    installation
    quickstart
    model_details
+   contributing
 
 .. toctree::
    :maxdepth: 3
@@ -29,6 +30,12 @@ Vis(ion)Match(ers) is a unified API for 50+ image matching models with a consist
    api/vismatch.utils
    api/vismatch.viz
    api/vismatch.im_models
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Model Specific Info
+
+   model_specific/matchanything
 
 Indices and tables
 ------------------

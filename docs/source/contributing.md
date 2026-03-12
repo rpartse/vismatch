@@ -1,4 +1,6 @@
-# To add a new method:
+# Contributing
+
+## Adding a New Method
 Let's for example add a matcher called new_matcher.
 1. Copy the template to create a new file: `cp vismatch/TEMPLATE.py vismatch/im_models/new_matcher.py`
 2. If the method requires external modules (for example the offical repository of new_matcher), use `git submodule add`: for example, I used this command to add the LightGlue module
@@ -28,11 +30,13 @@ Let's for example add a matcher called new_matcher.
    ```
    Now submit a PR!
 
-Note: as authors update their model repos, consider updating the submodule reference here using the below:
+```{note}
+As authors update their model repos, consider updating the submodule reference here using the below:
 To update a submodule to the head of the remote, run 
 ```bash
 git submodule update --remote vismatch/third_party/[submodule_name]
 ```
+
 
 ## Optional: add docs
 You can create the file `docs/source/model_specific/new_matcher.md` to explain how the model is used. This is especially useful if the model has multiple hyperparameters.
