@@ -24,6 +24,7 @@ def plot_images(
     imgs: list[torch.Tensor | np.ndarray | str | Path | Image.Image],
     titles=None,
     cmaps="gray",
+    fig_height=4.5,
     dpi=100,
     pad=0.5,
     adaptive=True,
@@ -38,7 +39,7 @@ def plot_images(
         cmaps = [cmaps] * num_imgs
     ratios = [img.shape[1] / img.shape[0] for img in imgs] if adaptive else [4 / 3] * num_imgs
     fig, axs = plt.subplots(
-        1, num_imgs, figsize=[sum(ratios) * 4.5, 4.5], dpi=dpi, gridspec_kw={"width_ratios": ratios}
+        1, num_imgs, figsize=[sum(ratios) * fig_height, fig_height], dpi=dpi, gridspec_kw={"width_ratios": ratios}
     )
     if num_imgs == 1:
         axs = np.array([axs])
@@ -52,7 +53,10 @@ def plot_images(
 
 
 def _draw_kpts(
-    kpts: list[np.ndarray | torch.Tensor], axs: list[matplotlib.axes.Axes], colors: str = "lime", point_size: int = 4
+    kpts: list[np.ndarray | torch.Tensor],
+    axs: list[matplotlib.axes.Axes],
+    colors: str = "lime",
+    point_size: int = 4,
 ) -> list[matplotlib.axes.Axes]:
     """Plot keypoints on axes."""
     assert len(kpts) == len(axs), "Number of keypoints sets must match number of axes."
@@ -150,14 +154,24 @@ def plot_matches(
     lw: float = 0.2,
     point_size: int = 4,
     show_text: bool = True,
+    # plot_images kwargs
+    cmaps: str = "gray",
+    fig_height: float = 4.5,
+    dpi: int = 100,
+    pad: float = 0.5,
+    adaptive: bool = True,
+    # add_text kwargs
+    fs: int = 17,
+    outline_width: int = 2,
 ):
     """Plot matches between two images."""
-    axs = plot_images([img0, img1])
+    axs = plot_images([img0, img1], cmaps=cmaps, fig_height=fig_height, dpi=dpi, pad=pad, adaptive=adaptive)
     fig = axs[0].get_figure()
 
     # draw all matches (even non-inliers) in blue
     if show_matched_kpts and "matched_kpts0" in result:
         _draw_matches(result["matched_kpts0"], result["matched_kpts1"], fig, "blue", lw * 0.25, point_size * 0.5)
+
     # draw all keypoints in orange
     if show_all_kpts and result.get("all_kpts0") is not None:
         _draw_kpts([result["all_kpts0"], result["all_kpts1"]], axs, colors="orange", point_size=point_size * 0.5)
@@ -167,9 +181,7 @@ def plot_matches(
     if show_text:
         num_inliers, num_matches = len(result["inlier_kpts0"]), len(result["matched_kpts1"])
         ratio = f"{num_inliers / num_matches:.2f}" if num_matches else "N/A"
-        add_text(
-            axs[0], f"{num_inliers} inliers / {num_matches} matches\ninlier ratio: {ratio}", fs=17, outline_width=2
-        )
+        add_text(axs[0], f"{num_inliers} inliers / {num_matches} matches\ninlier ratio: {ratio}", fs=fs, outline_width=outline_width)
         add_text(axs[0], "Img0", pos=(0.01, 0.01), va="bottom")
         add_text(axs[1], "Img1", pos=(0.01, 0.01), va="bottom")
 
@@ -179,14 +191,30 @@ def plot_matches(
 
 
 def plot_keypoints(
-    img0: torch.Tensor, result: dict, model_name: str = "", color="orange", save_path: str | Path | None = None
+    img0: torch.Tensor,
+    result: dict,
+    model_name: str = "",
+    save_path: str | Path | None = None,
+    # plot_images kwargs
+    cmaps: str = "gray",
+    fig_height: float = 4.5,
+    dpi: int = 100,
+    pad: float = 0.5,
+    adaptive: bool = True,
+    # add_text kwargs
+    fs: int = 17,
+    outline_width: int = 2,
+    # _draw_kpts kwargs
+    color: str = "orange",
+    point_size: int = 4,
 ) -> matplotlib.axes.Axes:
     """Plot keypoints in one image."""
-    ax = plot_images([img0])[0]
-    _draw_kpts([result["all_kpts0"]], [ax], colors=color, point_size=10)
+
+    ax = plot_images([img0], cmaps=cmaps, fig_height=fig_height, dpi=dpi, pad=pad, adaptive=adaptive)[0]
+    _draw_kpts([result["all_kpts0"]], [ax], colors=color, point_size=point_size)
 
     label = f"{len(result['all_kpts0'])} kpts" + (f" - {model_name}" if model_name else "")
-    add_text(ax, label, fs=20)
+    add_text(ax, label, fs=fs, outline_width=outline_width)
 
     if save_path is not None:
         fig = ax.get_figure()
